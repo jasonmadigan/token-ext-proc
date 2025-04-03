@@ -1,0 +1,49 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: ext-proc-filter
+  namespace: istio-system
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: GATEWAY
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.ext_proc
+        typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.http.ext_proc.v3.ExtProc"
+          # "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+          # type_url: "type.googleapis.com/envoy.extensions.filters.http.ext_proc.v3.ExternalProcessor"
+          grpc_service:
+            envoy_grpc:
+              cluster_name: ext_proc_cluster
+  # locally running proc
+  - applyTo: CLUSTER
+    match:
+      cluster:
+        name: "ext_proc_cluster"
+    patch:
+      operation: ADD
+      value:
+        name: ext_proc_cluster
+        type: STATIC
+        connect_timeout: 1s
+        lb_policy: ROUND_ROBIN
+        load_assignment:
+          cluster_name: ext_proc_cluster
+          endpoints:
+          - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address:
+                    address: host.docker.internal
+                    port_value: 50051
