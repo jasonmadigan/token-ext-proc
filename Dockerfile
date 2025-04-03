@@ -1,4 +1,4 @@
-FROM golang:1.17-alpine as build
+FROM golang:1.17-alpine AS build
 ENV CGO_ENABLED=0
 ENV GOOS=linux
 ENV GOARCH=amd64
@@ -6,12 +6,11 @@ ENV GOARCH=amd64
 WORKDIR /src
 COPY . .
 RUN go mod download
-RUN go build -o /ext-proc
+RUN go build -o /token-ext-proc
 
-## Multistage deploy
-FROM gcr.io/distroless/base-debian10
+FROM registry.access.redhat.com/ubi8/ubi-minimal
 
 WORKDIR /
-COPY --from=build /ext-proc /ext-proc
+COPY --from=build /token-ext-proc /token-ext-proc
 
-ENTRYPOINT ["/ext-proc"]
+ENTRYPOINT ["/token-ext-proc"]

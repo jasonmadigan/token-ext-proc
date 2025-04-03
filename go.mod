@@ -1,6 +1,8 @@
 module github.com/jasonmadigan/token-ext-proc
 
-go 1.17
+go 1.23.0
+
+toolchain go1.23.1
 
 require (
 	github.com/envoyproxy/go-control-plane v0.11.1-0.20230524094728-9239064ad72f
