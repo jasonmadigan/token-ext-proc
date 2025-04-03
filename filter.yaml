@@ -30,5 +30,5 @@ spec:
             failure_mode_allow: true
             grpc_service:
               google_grpc:
-                target_uri: host.docker.internal:9090
+                target_uri: host.docker.internal:50051
                 stat_prefix: required_but_does_nothing
