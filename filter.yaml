@@ -1,14 +1,12 @@
-
-
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
   name: ext-proc-filter
-  namespace: istio-system
+  namespace: kserve
 spec:
   workloadSelector:
     labels:
-      istio: ingressgateway
+      istio.io/gateway-name: kserve-ingress-gateway
   configPatches:
   - applyTo: HTTP_FILTER
     match:
@@ -27,8 +25,40 @@ spec:
           "@type": type.googleapis.com/udpa.type.v1.TypedStruct
           type_url: "type.googleapis.com/envoy.extensions.filters.http.ext_proc.v3.ExternalProcessor"
           value:
-            failure_mode_allow: true
+            failure_mode_allow: false
+            message_timeout:
+              seconds: 10
+            processing_mode:
+              request_header_mode: SKIP
+              request_body_mode: BUFFERED
+              response_header_mode: SEND
+              response_body_mode: BUFFERED
             grpc_service:
-              google_grpc:
-                target_uri: host.docker.internal:50051
-                stat_prefix: required_but_does_nothing
+              timeout:
+                seconds: 10
+              envoy_grpc:
+                cluster_name: ext-proc-token
+              # google_grpc:
+              #   target_uri: host.docker.internal:50051
+              #   stat_prefix: my-server
+  - applyTo: CLUSTER
+    match:
+      cluster:
+        service: host.docker.internal
+    patch:
+      operation: ADD
+      value:
+        name: ext-proc-token
+        type: STRICT_DNS
+        connect_timeout: 1s
+        http2_protocol_options: {}
+        lb_policy: ROUND_ROBIN
+        load_assignment:
+          cluster_name: ext-proc-token
+          endpoints:
+          - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address:
+                    address: host.docker.internal
+                    port_value: 50051
