@@ -25,19 +25,16 @@ import (
 type server struct{}
 type healthServer struct{}
 
-// Check is a simple health check handler with debug logging
 func (s *healthServer) Check(ctx context.Context, in *healthPb.HealthCheckRequest) (*healthPb.HealthCheckResponse, error) {
 	log.Printf("[HealthCheck] Received health check request: %+v", in)
 	return &healthPb.HealthCheckResponse{Status: healthPb.HealthCheckResponse_SERVING}, nil
 }
 
-// Watch is not implemented, but logs that it was called
 func (s *healthServer) Watch(in *healthPb.HealthCheckRequest, srv healthPb.Health_WatchServer) error {
 	log.Printf("[HealthWatch] Received watch request: %+v", in)
 	return status.Error(codes.Unimplemented, "Watch is not implemented")
 }
 
-// Process handles the ext_proc gRPC calls with detailed debug logging
 func (s *server) Process(srv extProcPb.ExternalProcessor_ProcessServer) error {
 	log.Println("[Process] Starting processing loop")
 	for {
@@ -84,7 +81,7 @@ func (s *server) Process(srv extProcPb.ExternalProcessor_ProcessServer) error {
 					ResponseHeaders: &extProcPb.HeadersResponse{},
 				},
 				ModeOverride: &filterPb.ProcessingMode{
-					ResponseHeaderMode: filterPb.ProcessingMode_SEND,
+					ResponseHeaderMode: filterPb.ProcessingMode_SKIP,
 					ResponseBodyMode:   filterPb.ProcessingMode_BUFFERED,
 				},
 			}
@@ -105,7 +102,7 @@ func (s *server) Process(srv extProcPb.ExternalProcessor_ProcessServer) error {
 			}
 
 			log.Println("[Process] Received complete ResponseBody, attempting to parse JSON for usage metrics")
-			// Parse OpenAI-style usage metrics
+			// parse OpenAI-style usage metrics
 			var openAIResp struct {
 				Usage struct {
 					PromptTokens     int `json:"prompt_tokens"`
@@ -127,23 +124,24 @@ func (s *server) Process(srv extProcPb.ExternalProcessor_ProcessServer) error {
 			log.Printf("[Process] Successfully parsed usage metrics: %+v", openAIResp.Usage)
 
 			// decorate as headers
+			// send as RawValues (seems to encounter this issue otherwise: https://github.com/envoyproxy/envoy/issues/31555)
 			headers := []*configPb.HeaderValueOption{
 				{
 					Header: &configPb.HeaderValue{
-						Key:   "x-openai-prompt-tokens",
-						Value: strconv.Itoa(openAIResp.Usage.PromptTokens),
+						Key:      "x-kuadrant-openai-prompt-tokens",
+						RawValue: []byte(strconv.Itoa(openAIResp.Usage.PromptTokens)),
 					},
 				},
 				{
 					Header: &configPb.HeaderValue{
-						Key:   "x-openai-total-tokens",
-						Value: strconv.Itoa(openAIResp.Usage.TotalTokens),
+						Key:      "x-kuadrant-openai-total-tokens",
+						RawValue: []byte(strconv.Itoa(openAIResp.Usage.TotalTokens)),
 					},
 				},
 				{
 					Header: &configPb.HeaderValue{
-						Key:   "x-openai-completion-tokens",
-						Value: strconv.Itoa(openAIResp.Usage.CompletionTokens),
+						Key:      "x-kuadrant-openai-completion-tokens",
+						RawValue: []byte(strconv.Itoa(openAIResp.Usage.CompletionTokens)),
 					},
 				},
 			}
