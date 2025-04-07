@@ -29,9 +29,9 @@ spec:
             message_timeout:
               seconds: 10
             processing_mode:
-              request_header_mode: SKIP
+              request_header_mode: SEND
               request_body_mode: BUFFERED
-              response_header_mode: SKIP
+              response_header_mode: SEND
               response_body_mode: BUFFERED
             grpc_service:
               timeout:
