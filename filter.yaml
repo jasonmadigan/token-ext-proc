@@ -36,11 +36,11 @@ spec:
             grpc_service:
               timeout:
                 seconds: 10
-              envoy_grpc:
-                cluster_name: ext-proc-token
-              # google_grpc:
-              #   target_uri: host.docker.internal:50051
-              #   stat_prefix: my-server
+              # envoy_grpc:
+              #   cluster_name: ext-proc-token
+              google_grpc:
+                target_uri: host.docker.internal:50051
+                stat_prefix: token-ext-proc
   - applyTo: CLUSTER
     match:
       cluster:
